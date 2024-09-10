@@ -49,13 +49,12 @@ To learn more about compressed tokens and the technology behind them, check out 
 - **Notifications**: React Toastify
 
 ## Architecture
-The application is built on a modern, component-based architecture:
-
+Key components to investigate for your own project:
 1. **WalletsStateContext**: Central state management for wallet data.
-2. **ApiContext**: Manages API interactions, particularly with Helius.
-3. **Wallet Component**: Displays individual wallet information.
-4. **WalletHistory Component**: Shows transaction history for each wallet.
-5. **WalletActions Component**: Handles wallet operations like sending funds.
+1. **ApiContext**: Manages API interactions, particularly with Helius.
+1. **Wallet Component**: Displays individual wallet information.
+1. **WalletHistory Component**: Shows transaction history for each wallet.
+1. **WalletActions Component**: Handles wallet operations like sending funds.
 
 ## Setup and Installation
 
@@ -115,9 +114,9 @@ The application is built on a modern, component-based architecture:
 ## Contributing
 Contributions to the Compressed Wallet project are welcome. Please follow these steps:
 1. Fork the repository.
-2. Create a new branch for your feature.
-3. Commit your changes and push to your fork.
-4. Create a pull request with a detailed description of your changes.
+1. Create a new branch for your feature.
+1. Commit your changes and push to your fork.
+1. Create a pull request with a detailed description of your changes.
 
 ## Acknowledgements
 - Light protocol for the zero-knowledge compressed accounts infrastructure and libraries
