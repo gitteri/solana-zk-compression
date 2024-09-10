@@ -7,8 +7,8 @@ import Link from 'next/link';
 import { copyToClipboard, formatSOLBalance, formatUSDCBalance } from './utils';
 import { SimpleTransaction } from './WalletHistory';
 
-// CompressedWallet: A type representing a compressed wallet with its public key,
-// private key, SOL balance, SPL token balance, ZK token balance, and transaction history
+// CompressedWallet: A type representing a compressed wallet with its public key (address),
+// private key, SOL balance, SPL token balance, Compressed token balance, and transaction history
 export type CompressedWallet = {
     publicKey: PublicKey;
     privateKey: Uint8Array;
@@ -35,7 +35,7 @@ export const generateWallet = (): CompressedWallet => {
 }
 
 /**
- * Renders a wallet card with its public key, SOL balance, SPL token balance, ZK token balance,
+ * Renders a wallet card with its public key (address), SOL balance, SPL token balance, compressed token balance,
  * and a link to the wallet's transaction history.
  * @param wallet The CompressedWallet object to be displayed
  * @param index The index of the wallet in the list
@@ -67,7 +67,7 @@ const Wallet: React.FC<{ wallet: CompressedWallet, index: number }> = ({ wallet,
             <div className="border-b border-gray-200 opacity-50 mb-2"></div>
             <div className="space-y-2">
                 <p className="text-sm flex items-center">
-                    <span className="font-semibold">Public Key:</span>{' '}
+                    <span className="font-semibold">Address:</span>{' '}
                     <span className="font-mono text-xs break-all">{wallet.publicKey.toString()}</span>
                     <button
                         onClick={() => {
@@ -92,8 +92,8 @@ const Wallet: React.FC<{ wallet: CompressedWallet, index: number }> = ({ wallet,
                     {formatUSDCBalance(wallet.splBalance)} USDC
                 </p>
                 <p className="text-sm">
-                    <span className="font-semibold">ZK Token Balance:</span>{' '}
-                    {formatUSDCBalance(wallet.zkBalance)} ZK USDC
+                    <span className="font-semibold">Compressed Token Balance:</span>{' '}
+                    {formatUSDCBalance(wallet.zkBalance)} Compressed USDC
                 </p>
             </div>
         </div>
