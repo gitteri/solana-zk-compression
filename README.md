@@ -1,10 +1,13 @@
-# Compressed Token Wallet
+# Solana ZK Compressed Token Wallet
 
 ## Overview
-Compressed Token Wallet is a cutting-edge mini-application designed to showcase the power and flexibility of Light Protocol's compressed tokens.
+The Solana ZK Compressed Token Wallet is a cutting-edge mini-application designed to showcase the power and flexibility of Light Protocol's compressed tokens.
 This application allows users to create and interact with Solana wallets on-demand, with a specific focus on zk (zero-knowledge) compressed tokens.
 It is designed to only be used on Solana Devnet for demo purposes and is not intended for production use. Private keys are stored in the browser's local storage.
 Again: **This is not intended for production use.**
+
+## Screenshot
+![Screenshot](./screenshot_wallet_details.png)
 
 ## Understanding Compressed Tokens
 Compressed tokens are an innovative solution in the Solana ecosystem that allows for more efficient storage and management of token data. It specifically addresses the high storage cost associated with token accounts allowing users to avoid this cost almost entirely. While it would normally cost ~0.002 SOL to create an ATA (associated token account) on-chain, with compressed accounts it costs 0.000005 SOL. That's a reduction of ~400%! Here's a brief overview of how they work:
