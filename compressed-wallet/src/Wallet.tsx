@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { copyToClipboard, formatSOLBalance, formatUSDCBalance } from './utils';
 import { SimpleTransaction } from './WalletHistory';
 
+// CompressedWallet: A type representing a compressed wallet with its public key,
+// private key, SOL balance, SPL token balance, ZK token balance, and transaction history
 export type CompressedWallet = {
     publicKey: PublicKey;
     privateKey: Uint8Array;
@@ -16,6 +18,10 @@ export type CompressedWallet = {
     txnHistory: SimpleTransaction[];
 };
 
+/**
+ * Generates a new CompressedWallet with default balances and an empty transaction history.
+ * @returns A new CompressedWallet object
+ */
 export const generateWallet = (): CompressedWallet => {
     const keypair = Keypair.generate();
     return {
@@ -28,18 +34,28 @@ export const generateWallet = (): CompressedWallet => {
     };
 }
 
+/**
+ * Renders a wallet card with its public key, SOL balance, SPL token balance, ZK token balance,
+ * and a link to the wallet's transaction history.
+ * @param wallet The CompressedWallet object to be displayed
+ * @param index The index of the wallet in the list
+ * @returns A React component displaying the wallet details
+ */
 const Wallet: React.FC<{ wallet: CompressedWallet, index: number }> = ({ wallet, index }) => {
     if (!wallet) {
         return <div>Loading...</div>;
     }
     
     return (
-        <div key={wallet.publicKey.toString()} className="bg-white shadow-md rounded-lg p-4 border border-gray-200 my-2">
+        <div key={wallet.publicKey.toString()}
+            className="bg-white shadow-md rounded-lg p-4 border border-gray-200 my-2"
+        >
             <div className="flex justify-between items-center mb-2">
                 <Link href={`/wallet/${wallet.publicKey.toString()}`}>
                     <h3 className="text-lg font-medium">Wallet {index + 1}</h3>
                 </Link>
-                <Link href={`https://explorer.solana.com/address/${wallet.publicKey.toString()}?cluster=devnet`} passHref target="_blank">
+                <Link href={`https://explorer.solana.com/address/${wallet.publicKey.toString()}?cluster=devnet`}
+                    passHref target="_blank">
                     <span className="cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
@@ -60,8 +76,10 @@ const Wallet: React.FC<{ wallet: CompressedWallet, index: number }> = ({ wallet,
                         className="ml-2 text-gray-500 hover:text-gray-700 focus:outline-none"
                         title="Copy to clipboard"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                     </button>
                 </p>

@@ -21,6 +21,11 @@ export const SHARED_PUBLIC_ADDRESS_TREE_ID = new PublicKey("amt1Ayt45jfbdw5YSo7i
 export const SHARED_PUBLIC_ADDRESS_QUEUE_ID = new PublicKey("aq1S9z4reTSQAdgWHGD2zDaS39sjGrAxbR31vxJ2F4F");
 export const DEFAULT_LOOKUP_TABLE_1 = new PublicKey("qAJZMgnQJ8G6vA3WRcjD9Jan1wtKkaCFWLWskxJrR5V");
 
+// ApiService: A class for interacting with the Helius API for Solana blockchain operations
+// It provides methods to get the connection to the Helius API, airdrop SOL, get SOL and SPL balances,
+// get transaction history, and perform various token operations like transfer, compress, and decompress.
+//
+// Note that the Helius API has rate limits, especially for compressed tokens (Photon), so be mindful of the number of requests you make.
 export class ApiService {
     public connection: Rpc;
 
@@ -30,7 +35,7 @@ export class ApiService {
 
     getConnection(api_key: string): Rpc {
         if (!api_key) {
-            api_key = process.env.HELIUS_API_KEY || '';
+            api_key = process.env.NEXT_PUBLIC_HELIUS_API_KEY || '';
         }
         const RPC_ENDPOINT = `https://devnet.helius-rpc.com?api-key=${api_key}`
         const COMPRESSION_RPC_ENDPOINT = RPC_ENDPOINT;

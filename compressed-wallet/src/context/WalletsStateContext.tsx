@@ -7,7 +7,9 @@ import { CompressedWallet } from '../Wallet';
 import { SimpleTransaction } from '../WalletHistory';
 import { useApi } from './ApiContext';
 
-interface GlobalState {
+// WalletsStateContext: A React context for managing the state of the wallets
+// It provides the current state of the wallets, a function to set the wallets, and functions to update the balances and transaction history of the wallets
+interface WalletsState {
     wallets: CompressedWallet[];
     setWallets: React.Dispatch<React.SetStateAction<CompressedWallet[]>>;
     updateWalletBalance: (address: PublicKey) => Promise<void>;
@@ -17,10 +19,12 @@ interface GlobalState {
     hydrated: boolean;
 }
 
+// getCompressedWallets: A helper function to retrieve the wallets from local storage and convert them to CompressedWallet objects
 const getCompressedWallets = (): CompressedWallet[] => {
     return parseCompressedWallets(localStorage?.getItem('wallets') || '[]');
 }
 
+// parseCompressedWallets: A helper function to parse the wallets from local storage and convert them to CompressedWallet objects
 const parseCompressedWallets = (walletStrings: string): CompressedWallet[] => {
     const walletsData = JSON.parse(walletStrings);
     return walletsData.map((wallet: { publicKey: string, privateKey: object, solBalance: string, splBalance: string, zkBalance: string, txnHistory: SimpleTransaction[] }) => {
@@ -36,8 +40,9 @@ const parseCompressedWallets = (walletStrings: string): CompressedWallet[] => {
     });
 };
 
-
-const GlobalStateContext = createContext<GlobalState>({
+// WalletsStateContext: A React context for managing the state of the wallets
+// It provides the current state of the wallets, a function to set the wallets, and functions to update the balances and transaction history of the wallets
+const WalletsStateContext = createContext<WalletsState>({
     wallets: [],
     setWallets: () => { },
     updateWalletBalance: async () => { },
@@ -47,9 +52,12 @@ const GlobalStateContext = createContext<GlobalState>({
     hydrated: false,
 });
 
-export const useGlobalState = () => useContext(GlobalStateContext);
+// useWalletsState: A custom hook that allows components to easily access the wallets state and functions
+export const useWalletsState = () => useContext(WalletsStateContext);
 
-export const GlobalStateProvider = ({ children }: { children: React.ReactNode }) => {
+// WalletsStateProvider: A component that wraps the application and provides the wallets state and functions to all child components
+// It initializes the wallets state and updates the balances and transaction history of the wallets
+export const WalletsStateProvider = ({ children }: { children: React.ReactNode }) => {
     const [wallets, setWallets] = useState<CompressedWallet[]>([]);
     const [hydrated, setHydrated] = useState(false);
     const apiService = useApi();
@@ -118,8 +126,6 @@ export const GlobalStateProvider = ({ children }: { children: React.ReactNode })
         );
     };
 
-    
-
     useEffect(() => {
         console.log("Debug: loading initial state");
         setWallets(getCompressedWallets());
@@ -137,15 +143,15 @@ export const GlobalStateProvider = ({ children }: { children: React.ReactNode })
             if (typeof window !== 'undefined') {
                 localStorage.setItem('wallets', JSON.stringify(wallets));
             }
-        }, 10000); // Update every 1 seconds
+        }, 10000); // Update every 10 seconds
 
 
         return () => clearInterval(intervalId); // Cleanup interval on unmount
-    }, [wallets]); // Depend on the wallets array
+    }, [wallets]);
 
     return (
-        <GlobalStateContext.Provider value={{ wallets, setWallets, updateWalletBalance, updateWalletSolBalance, updateWalletZkBalance, updateWalletHistory, hydrated }}>
+        <WalletsStateContext.Provider value={{ wallets, setWallets, updateWalletBalance, updateWalletSolBalance, updateWalletZkBalance, updateWalletHistory, hydrated }}>
             {children}
-        </GlobalStateContext.Provider>
+        </WalletsStateContext.Provider>
     );
 }

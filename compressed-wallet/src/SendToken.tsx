@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { BN } from '@coral-xyz/anchor';
-import { CompressedWallet } from './Wallet';
 import { PublicKey } from '@solana/web3.js';
+import { toast } from 'react-toastify';
+import Link from 'next/link';
 import { useApi } from './context/ApiContext';
-import { useGlobalState } from './context/GlobalStateContext';
+import { useWalletsState } from './context/WalletsStateContext';
+import { usdcToBN } from './utils';
+import { CompressedWallet } from './Wallet';
 
 export interface Token {
     symbol: string;
@@ -24,52 +26,73 @@ const defaultBalanceType = (activeWallet: CompressedWallet): BalanceType => {
     return 'compressed';
 };
 
+const ToastWithLinkToExplorer = (signature: string) => (
+    <div className="flex items-center">
+        <Link href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank">
+            <span className="cursor-pointer">
+                Transaction sent. View on Solana Explorer
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block ml-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                </svg>
+            </span>
+        </Link>
+    </div>
+)
+
 const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
     const [amount, setAmount] = useState<string>('');
     const [balanceType, setBalanceType] = useState<BalanceType>(defaultBalanceType(activeWallet));
     const [recipient, setRecipient] = useState<string>('');
     const [isSending, setIsSending] = useState(false);
     const apiClient = useApi();
-    const { wallets, updateWalletBalance, updateWalletHistory } = useGlobalState();
+    const { wallets, updateWalletBalance, updateWalletHistory } = useWalletsState();
 
-    const validateTransferRequest = (amount: string, recipient: string, activeWallet: CompressedWallet, token: Token, balanceType: BalanceType): boolean => {
+
+    const validateTransferRequest = (amount: string, recipient: string, activeWallet: CompressedWallet, token: Token, balanceType: BalanceType): string | null => {
         // Validate amount
         if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
             console.error('Invalid amount');
-            return false;
+            return 'Invalid amount';
         }
 
         // Validate recipient
         if (!recipient) {
             console.error('Recipient address is required');
-            return false;
+            return 'Recipient address is required';
         }
 
         // Attempt to create a PublicKey from the recipient string
         // This will throw an error if the address is invalid
-        const recipientPublicKey = new PublicKey(recipient);
+        try {
+            new PublicKey(recipient);
+        } catch (error) {
+            console.error('Invalid recipient address');
+            return 'Invalid recipient address';
+        }
 
         // Check if the sender has sufficient SOL balance for fees
         if (activeWallet.solBalance <= 0) {
             console.error('Insufficient SOL balance for transaction fees');
-            return false;
+            return 'Insufficient SOL balance for transaction fees';
         }
 
         // Check if the sender has sufficient token balance
-        if (balanceType === 'regular' && activeWallet.splBalance.lt(new BN(parseFloat(amount) * 1e6))) {
+        if (balanceType === 'regular' && activeWallet.splBalance.lt(usdcToBN(amount))) {
             console.error(`Insufficient ${token.symbol} balance`);
-            return false;
+            return `Insufficient ${token.symbol} balance`;
         }
-        if (balanceType === 'compressed' && activeWallet.zkBalance.lt(new BN(parseFloat(amount) * 1e6))) {
-            console.error(`Insufficient ${token.symbol} balance`);
-            return false;
+        if (balanceType === 'compressed' && activeWallet.zkBalance.lt(usdcToBN(amount))) {
+            console.error(`Insufficient ZK ${token.symbol} balance`);
+            return `Insufficient ZK ${token.symbol} balance`;
         }
-        return true;
+        return null;
     };
 
     const handleSend = async () => {
-        if (!validateTransferRequest(amount, recipient, activeWallet, token, balanceType)) {
-            // TODO: show error to user
+        const error = validateTransferRequest(amount, recipient, activeWallet, token, balanceType);
+        if (error) {
+            toast.error(error);
             return;
         }
 
@@ -79,7 +102,7 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
             // If we've made it this far, the request is valid
             // Proceed with sending tokens
             // possible transfers:
-            // 1. compressed to uncompressed
+            // 1. uncompressed to compressed
             if (token.compressed && balanceType === 'regular') {
                 console.log('Sending compressed tokens');
                 signature = await apiClient.compress(
@@ -109,8 +132,8 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
                     amount,
                 );
             }
-            
-            // 4. uncompressed to compressed
+
+            // 4. compressed to uncompressed
             if (!token.compressed && balanceType === 'compressed') {
                 console.log('Sending uncompressed tokens');
                 signature = await apiClient.decompress(
@@ -122,11 +145,12 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
 
             // TODO: update the UI to show the transaction was sent
             console.log('Transaction sent', signature);
+            toast.success(ToastWithLinkToExplorer(signature || ''));
             await updateWalletBalance(activeWallet.publicKey);
             await updateWalletHistory(activeWallet.publicKey);
         } catch (error) {
             console.error('Error sending tokens', error);
-            return;
+            toast.error(`Error sending tokens: ${error}`);
         } finally {
             setIsSending(false);
         }

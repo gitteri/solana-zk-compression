@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { useGlobalState } from '../../../src/context/GlobalStateContext';
+import { useWalletsState } from '../../../src/context/WalletsStateContext';
 import Wallet from '../../../src/Wallet';
 import WalletHistory from '../../../src/WalletHistory';
 import WalletActions from '../../../src/WalletActions';
@@ -13,7 +13,7 @@ const WalletPage: React.FC = () => {
     const router = useRouter();
 
     const walletAddress = params.walletAddress as string;
-    const { wallets, hydrated } = useGlobalState();
+    const { wallets, hydrated } = useWalletsState();
     const wallet = wallets.find(w => w.publicKey.toString() === walletAddress);
 
     useEffect(() => {

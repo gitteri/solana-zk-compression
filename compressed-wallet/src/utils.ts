@@ -1,5 +1,5 @@
 import { BN } from '@coral-xyz/anchor';
-
+import { toast } from 'react-toastify';
 /**
  * Converts a BN balance to a string representation with the specified number of decimals.
  * @param balance The balance as a BN object
@@ -59,21 +59,11 @@ export function usdcToBN(amount: string): BN {
     return new BN(microUsdc);
 }
 
-
+/**
+ * Copies text to the clipboard and displays a popup notification.
+ * @param text The text to be copied to the clipboard
+ */
 export function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
-    const popup = document.createElement('div');
-    popup.textContent = 'Copied';
-    popup.style.position = 'fixed';
-    popup.style.bottom = '20px';
-    popup.style.left = '50%';
-    popup.style.transform = 'translateX(-50%)';
-    popup.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    popup.style.color = 'white';
-    popup.style.padding = '10px';
-    popup.style.borderRadius = '5px';
-    document.body.appendChild(popup);
-    setTimeout(() => {
-        document.body.removeChild(popup);
-    }, 2000);
+    toast.success('Copied to clipboard', { autoClose: 2000 });
 }

@@ -2,11 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useGlobalState } from './context/GlobalStateContext';
+import { useWalletsState } from './context/WalletsStateContext';
 import Wallet from './Wallet';
 
+// Wallets: A React component for displaying a list of wallet summaries
 const Wallets: React.FC = () => {
-    const { wallets } = useGlobalState();
+    const { wallets } = useWalletsState();
 
     return (
         <div>

@@ -1,11 +1,11 @@
 'use client'
 
 import React from 'react';
-import { useGlobalState } from './context/GlobalStateContext';
+import { useWalletsState } from './context/WalletsStateContext';
 import { generateWallet } from './Wallet';
 
 const GenerateWallet = () => {
-    const { wallets, setWallets } = useGlobalState();
+    const { wallets, setWallets } = useWalletsState();
 
     return (
         <div className="my-2">

@@ -1,5 +1,10 @@
 import React from 'react';
 
+/**
+ * SimpleTransaction: A type representing a simple transaction with its signature, slot, and compression status.
+ * note: for simplicity, we're not including the actual transaction data, just the signature, slot, and compression status
+ * in a real-world application, you would likely want to include more data, such as the transaction's data, fee, and other metadata
+ */
 export type SimpleTransaction = {
     signature: string;
     slot: number;
@@ -10,6 +15,11 @@ interface WalletHistoryProps {
     transactions: SimpleTransaction[];
 }
 
+/**
+ * WalletHistory: A React component for displaying a wallet's transaction history.
+ * @param transactions An array of SimpleTransaction objects representing the wallet's transactions
+ * @returns A React component displaying the wallet's transaction history in a collapsible details section
+ */
 const WalletHistory: React.FC<WalletHistoryProps> = ({ transactions }) => {
     if (!transactions || transactions.length === 0) {
         return null;
@@ -27,7 +37,11 @@ const WalletHistory: React.FC<WalletHistoryProps> = ({ transactions }) => {
                             <li key={index} className="bg-white p-3 rounded shadow-sm">
                                 <div className="flex justify-between items-center">
                                     <span className="font-mono text-sm truncate w-2/3">
-                                        <a href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                                        <a href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-500 hover:underline"
+                                        >
                                             {tx.signature}
                                         </a>
                                     </span>
