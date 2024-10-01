@@ -61,7 +61,7 @@ Key components to investigate for your own project:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-repo/compressed-wallet.git
+   git clone https://github.com/gitteri/solana-zk-compression.git
    ```
 
 2. Install dependencies:
@@ -111,7 +111,8 @@ Key components to investigate for your own project:
 - Private keys are stored in the browser's local storage. In a production environment, more secure key management solutions should be implemented.
 
 ## Future Enhancements
-- Support for Token Extensions based tokens like PYUSD
+- Support for Token Extensions based tokens like PYUSD.
+- Explore using a custom state tree instead of the default one.
 
 ## Contributing
 Contributions to the Compressed Wallet project are welcome. Please follow these steps:
