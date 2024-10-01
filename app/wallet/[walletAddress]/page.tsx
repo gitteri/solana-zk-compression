@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { useWalletsState } from '../../../src/context/WalletsStateContext';
+import { useNetwork } from '../../../src/context/ApiContext';
 import Wallet from '../../../src/Wallet';
 import WalletHistory from '../../../src/WalletHistory';
 import WalletActions from '../../../src/WalletActions';
@@ -11,6 +12,7 @@ import WalletActions from '../../../src/WalletActions';
 const WalletPage: React.FC = () => {
     const params = useParams();
     const router = useRouter();
+    const network = useNetwork();
 
     const walletAddress = params.walletAddress as string;
     const { wallets, hydrated } = useWalletsState();
@@ -35,7 +37,7 @@ const WalletPage: React.FC = () => {
             {wallet && (
                 <React.Fragment>
                     <h1 className="text-3xl font-bold mb-6">Wallet Details</h1>
-                    <Wallet wallet={wallet} index={wallets.indexOf(wallet)} />
+                    <Wallet wallet={wallet} index={wallets.indexOf(wallet)} network={network} />
                     <WalletHistory transactions={wallet.txnHistory} />
                     <WalletActions wallet={wallet} />
                 </React.Fragment>

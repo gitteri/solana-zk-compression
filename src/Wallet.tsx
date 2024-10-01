@@ -41,7 +41,7 @@ export const generateWallet = (): CompressedWallet => {
  * @param index The index of the wallet in the list
  * @returns A React component displaying the wallet details
  */
-const Wallet: React.FC<{ wallet: CompressedWallet, index: number }> = ({ wallet, index }) => {
+const Wallet: React.FC<{ wallet: CompressedWallet, index: number, network: string }> = ({ wallet, index, network }) => {
     if (!wallet) {
         return <div>Loading...</div>;
     }
@@ -54,7 +54,7 @@ const Wallet: React.FC<{ wallet: CompressedWallet, index: number }> = ({ wallet,
                 <Link href={`/wallet/${wallet.publicKey.toString()}`}>
                     <h3 className="text-lg font-medium">Wallet {index + 1}</h3>
                 </Link>
-                <Link href={`https://explorer.solana.com/address/${wallet.publicKey.toString()}?cluster=devnet`}
+                <Link href={`https://explorer.solana.com/address/${wallet.publicKey.toString()}?cluster=${network}`}
                     passHref target="_blank">
                     <span className="cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

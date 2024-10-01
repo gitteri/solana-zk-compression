@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNetwork } from './context/ApiContext';
 
 /**
  * SimpleTransaction: A type representing a simple transaction with its signature, slot, and compression status.
@@ -24,6 +25,7 @@ const WalletHistory: React.FC<WalletHistoryProps> = ({ transactions }) => {
     if (!transactions || transactions.length === 0) {
         return null;
     }
+    const network = useNetwork();
 
     return (
         <div className="mt-6 mb-6">
@@ -37,7 +39,7 @@ const WalletHistory: React.FC<WalletHistoryProps> = ({ transactions }) => {
                             <li key={index} className="bg-white p-3 rounded shadow-sm">
                                 <div className="flex justify-between items-center">
                                     <span className="font-mono text-sm truncate w-2/3">
-                                        <a href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
+                                        <a href={`https://explorer.solana.com/tx/${tx.signature}?cluster=${network}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-blue-500 hover:underline"

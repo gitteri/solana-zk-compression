@@ -1,25 +1,14 @@
 import { Rpc, createRpc, CompressedTransaction, WithCursor, SignatureWithMetadata } from '@lightprotocol/stateless.js';
 import { BN } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddressSync, getOrCreateAssociatedTokenAccount, transferChecked } from '@solana/spl-token';
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { PublicKey, Keypair, SystemProgram, Transaction } from '@solana/web3.js';
 import { transfer, compress, decompress } from '@lightprotocol/compressed-token';
+import { DEVNET, MAINNET } from '../context/ApiContext';
 import { usdcToBN } from '../utils';
 import { CompressedWallet } from '../Wallet';
 import { SimpleTransaction } from '../WalletHistory';
 
-// Assuming USDC mint address on devnet
-const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 const USDC_DECIMALS = 6;
-
-// Program IDs and Accounts for Devnet
-export const LIGHT_SYSTEM_PROGRAM_ID = new PublicKey("SySTEM1eSU2p4BGQfQpimFEWWSC1XDFeun3Nqzz3rT7");
-export const COMPRESSED_TOKEN_PROGRAM_ID = new PublicKey("cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m");
-export const ACCOUNT_COMPRESSION_PROGRAM_ID = new PublicKey("compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq");
-export const SHARED_PUBLIC_STATE_TREE_ID = new PublicKey("smt1NamzXdq4AMqS2fS2F1i5KTYPZRhoHgWx38d8WsT");
-export const SHARED_PUBLIC_NULLIFIER_QUEUE_ID = new PublicKey("nfq1NvQDJ2GEgnS8zt9prAe8rjjpAW1zFkrvZoBR148");
-export const SHARED_PUBLIC_ADDRESS_TREE_ID = new PublicKey("amt1Ayt45jfbdw5YSo7iz6WZxUmnZsQTYXy82hVwyC2");
-export const SHARED_PUBLIC_ADDRESS_QUEUE_ID = new PublicKey("aq1S9z4reTSQAdgWHGD2zDaS39sjGrAxbR31vxJ2F4F");
-export const DEFAULT_LOOKUP_TABLE_1 = new PublicKey("qAJZMgnQJ8G6vA3WRcjD9Jan1wtKkaCFWLWskxJrR5V");
 
 // ApiService: A class for interacting with the Helius API for Solana blockchain operations
 // It provides methods to get the connection to the Helius API, airdrop SOL, get SOL and SPL balances,
@@ -28,20 +17,35 @@ export const DEFAULT_LOOKUP_TABLE_1 = new PublicKey("qAJZMgnQJ8G6vA3WRcjD9Jan1wt
 // Note that the Helius API has rate limits, especially for compressed tokens (Photon), so be mindful of the number of requests you make.
 export class ApiService {
     public connection: Rpc;
+    public network: string;
 
-    constructor(api_key: string) {
-        this.connection = this.getConnection(api_key);
+    constructor(api_key: string, network: string = DEVNET) {
+        this.connection = this.getConnection(api_key, network);
+        this.network = network;
     }
 
-    getConnection(api_key: string): Rpc {
+    getConnection(api_key: string, network: string = DEVNET): Rpc {
         if (!api_key) {
             api_key = process.env.NEXT_PUBLIC_HELIUS_API_KEY || '';
         }
-        const RPC_ENDPOINT = `https://devnet.helius-rpc.com?api-key=${api_key}`
+        const RPC_ENDPOINT = `https://${network}.helius-rpc.com?api-key=${api_key}`
         const COMPRESSION_RPC_ENDPOINT = RPC_ENDPOINT;
         const connection: Rpc = createRpc(RPC_ENDPOINT, COMPRESSION_RPC_ENDPOINT)
         console.log("Debug: connection to ", COMPRESSION_RPC_ENDPOINT, " created");
         return connection;
+    }
+
+    // USDC mint information from Circle's documentation
+    getUSDCMint(): PublicKey {
+        if (this.network === DEVNET) {
+            // https://developers.circle.com/stablecoins/docs/usdc-on-test-networks
+            return new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+        } else if (this.network === MAINNET) {
+            // https://developers.circle.com/stablecoins/docs/usdc-on-mainnet
+            return new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+        }
+
+        throw new Error("Invalid network");
     }
 
     async airdropSolana(publicKey: PublicKey, amount: number = 1): Promise<string> {
@@ -88,7 +92,7 @@ export class ApiService {
             const response = await this.connection.getTokenAccountsByOwner(
                 publicKey,
                 {
-                    mint: USDC_MINT
+                    mint: this.getUSDCMint()
                 }
             );
 
@@ -116,7 +120,7 @@ export class ApiService {
             return new BN(0)
         }
         console.log("Debug: response from getCompressedTokenBalancesByOwner", response.items[0].mint.toBase58());
-        const balance = response.items.find((item) => item.mint.toBase58() === USDC_MINT.toBase58());
+        const balance = response.items.find((item) => item.mint.toBase58() === this.getUSDCMint().toBase58());
         if (!balance) {
             console.log("Debug: No balance found for ", publicKey.toBase58());
             return new BN(0);
@@ -166,12 +170,51 @@ export class ApiService {
         return transaction;
     }
 
-    async transferZK(fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
+    async transferSol(feePayerWallet: CompressedWallet, fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: BN): Promise<string> {
+        try {
+            const transaction = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: fromWallet.publicKey,
+                    toPubkey: recipientPublicKey,
+                    lamports: amount.toNumber()
+                })
+            );
+
+            const feePayer = Keypair.fromSecretKey(feePayerWallet.privateKey);
+            const from = Keypair.fromSecretKey(fromWallet.privateKey);
+
+            transaction.feePayer = feePayer.publicKey;
+            const latestBlockhash = await this.connection.getLatestBlockhash();
+            transaction.recentBlockhash = latestBlockhash.blockhash;
+
+            transaction.sign(feePayer, from);
+
+            const signature = await this.connection.sendRawTransaction(transaction.serialize());
+
+            await this.connection.confirmTransaction({
+                signature,
+                ...latestBlockhash
+            });
+
+            console.log("Debug: SOL transfer transaction submitted onchain with signature ", signature);
+            return signature;
+        } catch (error) {
+            console.error("Error in transferSol:", error);
+            if (error instanceof Error) {
+                throw new Error(`Failed to transfer SOL: ${error.message}`);
+            } else {
+                throw new Error("Failed to transfer SOL: Unknown error");
+            }
+        }
+    }
+
+    async transferZK(feePayerWallet: CompressedWallet, fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
         // Convert amount string to BN using utils.formatUSDCBalance
         const amountBN = usdcToBN(amount);
         const from = Keypair.fromSecretKey(fromWallet.privateKey);
+        const feePayer = Keypair.fromSecretKey(feePayerWallet.privateKey);
         try {
-            const signature = await transfer(this.connection, from, USDC_MINT, amountBN, from, recipientPublicKey);
+            const signature = await transfer(this.connection, feePayer, this.getUSDCMint(), amountBN, from, recipientPublicKey);
             console.log("Debug: transaction submitted onchain with signature ", signature);
             return signature;
         } catch (error) {
@@ -184,31 +227,37 @@ export class ApiService {
         }
     }
 
-    async transferSpl(fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
+    async transferSpl(feePayerWallet: CompressedWallet, fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
         const amountBN = usdcToBN(amount);
+        const usdcMint = this.getUSDCMint();
         const from = Keypair.fromSecretKey(fromWallet.privateKey);
-        const fromATA = getAssociatedTokenAddressSync(USDC_MINT, from.publicKey);
-        const recipientATA = await getOrCreateAssociatedTokenAccount(this.connection, from, USDC_MINT, recipientPublicKey)
-        const signature = await transferChecked(this.connection, from, fromATA, USDC_MINT, recipientATA.address, from, amountBN, USDC_DECIMALS);
+        const feePayer = Keypair.fromSecretKey(feePayerWallet.privateKey);
+        const fromATA = getAssociatedTokenAddressSync(usdcMint, from.publicKey);
+        const recipientATA = await getOrCreateAssociatedTokenAccount(this.connection, from, usdcMint, recipientPublicKey)
+        const signature = await transferChecked(this.connection, feePayer, fromATA, usdcMint, recipientATA.address, from, amountBN, USDC_DECIMALS);
         console.log("Debug: transaction submitted onchain with signature ", signature);
         return signature;
     }
 
-    async compress(fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
+    async compress(feePayerWallet: CompressedWallet, fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
         const amountBN = usdcToBN(amount);
         const from = Keypair.fromSecretKey(fromWallet.privateKey);
-        const fromATA = getAssociatedTokenAddressSync(USDC_MINT, from.publicKey);
-        const signature = await compress(this.connection, from, USDC_MINT, amountBN, from, fromATA, recipientPublicKey);
+        const feePayer = Keypair.fromSecretKey(feePayerWallet.privateKey);
+        const usdcMint = this.getUSDCMint();
+        const fromATA = getAssociatedTokenAddressSync(usdcMint, from.publicKey);
+        const signature = await compress(this.connection, feePayer, usdcMint, amountBN, from, fromATA, recipientPublicKey);
         console.log("Debug: transaction submitted onchain with signature ", signature);
         return signature;
     }
 
-    async decompress(fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
+    async decompress(feePayerWallet: CompressedWallet, fromWallet: CompressedWallet, recipientPublicKey: PublicKey, amount: string): Promise<string> {
         const amountBN = usdcToBN(amount);
         const from = Keypair.fromSecretKey(fromWallet.privateKey);
-        const recipientATA = await getOrCreateAssociatedTokenAccount(this.connection, from, USDC_MINT, recipientPublicKey)
+        const feePayer = Keypair.fromSecretKey(feePayerWallet.privateKey);
+        const usdcMint = this.getUSDCMint();
+        const recipientATA = await getOrCreateAssociatedTokenAccount(this.connection, from, usdcMint, recipientPublicKey)
         console.log("Debug: recipientATA", recipientATA);
-        const signature = await decompress(this.connection, from, USDC_MINT, amountBN, from, recipientATA.address);
+        const signature = await decompress(this.connection, feePayer, usdcMint, amountBN, from, recipientATA.address);
         console.log("Debug: transaction submitted onchain with signature ", signature);
         return signature;
     }

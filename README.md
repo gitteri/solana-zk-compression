@@ -10,7 +10,7 @@ Again: **This is not intended for production use.**
 ![Screenshot](./screenshot_wallet_details.png)
 
 ## Understanding Compressed Tokens
-Compressed tokens are an innovative solution in the Solana ecosystem that allows for more efficient storage and management of token data. It specifically addresses the high storage cost associated with token accounts allowing users to avoid this cost almost entirely. While it would normally cost ~0.002 SOL to create an ATA (associated token account) on-chain, with compressed accounts it costs 0.000005 SOL. That's a reduction of ~400%! Here's a brief overview of how they work:
+Compressed tokens are an innovative solution in the Solana ecosystem that allows for more efficient storage and management of token data. It specifically addresses the high storage cost associated with token accounts allowing users to avoid this cost almost entirely. While it would normally cost ~0.002 SOL to create an ATA (associated token account) on-chain, with compressed accounts it costs 0.0000053 SOL. That's a reduction of ~400%! Additionally, a brand new account can receive a USDC deposit of a decompressed -> compressed USDC token within [the same transaction](https://photon.helius.dev/tx/4guHP1Qe1Z6i7LNZ5adye9vKXfpV8EBNhHGaeaRae8JHNMdkgwhgMzZY2FdHTWbXcmFgXRskJJo2ivVpkz8U7URL?cluster=mainnet-beta), and then decompresses it as [a withdrawal](https://photon.helius.dev/tx/57ZLpoULfWnQWA8MosS28AdR2udVzhuTkrfMXdbjaWkRipZo3hNENnvRUijCajKiXuEMgPF7aiXwLQDKZMPKVTzv?cluster=mainnet-beta) for a total of 0.0000153 SOL in fees. This allows the end user to completely avoid creating an ATA for this account while still being able to interact with the uncompressed USDC token. Here's a brief overview of how this work:
 
 1. **Data Compression**: Compressed tokens use advanced data compression techniques to reduce the on-chain storage footprint of token accounts.
 1. **Zero-Knowledge Proofs**: They leverage zero-knowledge (ZK) technology to maintain a small footprint while ensuring the validity of transactions.
@@ -25,6 +25,7 @@ To learn more about compressed tokens and the technology behind them, check out 
 - [Helius Blog: ZK Compression](https://www.helius.dev/blog/solana-builders-zk-compression)
 - [Light Protocol Documentation](https://docs.lightprotocol.com/)
 - [Light Protocol: Compressed Token JS Library](https://github.com/Lightprotocol/light-protocol/tree/main/js/compressed-token)
+- [Photon - Helius' Solana ZK Compression Explorer](https://photon.helius.dev/?cluster=mainnet-beta)
 
 
 ## Key Features
@@ -74,6 +75,7 @@ Key components to investigate for your own project:
    ```
    NEXT_PUBLIC_HELIUS_API_KEY=your_helius_api_key
    ```
+   * Note: you can set desired Solana environment by setting the `NEXT_PUBLIC_NETWORK` environment variable to `devnet` or `mainnet` respectively. If you chose to use mainnet, be sure to use small amounts of funds as the wallets generated are not secure for production use.
 
 4. Run the development server:
    ```

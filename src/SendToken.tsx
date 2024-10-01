@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import Link from 'next/link';
 import { useApi } from './context/ApiContext';
 import { useWalletsState } from './context/WalletsStateContext';
-import { usdcToBN } from './utils';
+import { usdcToBN, solToBN, formatSOLBalance } from './utils';
 import { CompressedWallet } from './Wallet';
 
 export interface Token {
@@ -26,9 +26,9 @@ const defaultBalanceType = (activeWallet: CompressedWallet): BalanceType => {
     return 'compressed';
 };
 
-const ToastWithLinkToExplorer = (signature: string) => (
+const ToastWithLinkToExplorer = (signature: string, network: string) => (
     <div className="flex items-center">
-        <Link href={`https://explorer.solana.com/tx/${signature}?cluster=devnet`} target="_blank">
+        <Link href={`https://explorer.solana.com/tx/${signature}?cluster=${network}`} target="_blank">
             <span className="cursor-pointer">
                 Transaction sent. View on Solana Explorer
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block ml-1" viewBox="0 0 20 20" fill="currentColor">
@@ -41,15 +41,16 @@ const ToastWithLinkToExplorer = (signature: string) => (
 )
 
 const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
-    const [amount, setAmount] = useState<string>('');
-    const [balanceType, setBalanceType] = useState<BalanceType>(defaultBalanceType(activeWallet));
-    const [recipient, setRecipient] = useState<string>('');
-    const [isSending, setIsSending] = useState(false);
     const apiClient = useApi();
     const { wallets, updateWalletBalance, updateWalletHistory } = useWalletsState();
 
+    const [amount, setAmount] = useState<string>('');
+    const [balanceType, setBalanceType] = useState<BalanceType>(defaultBalanceType(activeWallet));
+    const [feePayerWalletIndex, setFeePayerWalletIndex] = useState<number>(0);
+    const [recipient, setRecipient] = useState<string>('');
+    const [isSending, setIsSending] = useState(false);
 
-    const validateTransferRequest = (amount: string, recipient: string, activeWallet: CompressedWallet, token: Token, balanceType: BalanceType): string | null => {
+    const validateTransferRequest = (amount: string, recipient: string, feePayerWalletIndex: number, activeWallet: CompressedWallet, token: Token, balanceType: BalanceType): string | null => {
         // Validate amount
         if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
             console.error('Invalid amount');
@@ -71,26 +72,38 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
             return 'Invalid recipient address';
         }
 
+        if (feePayerWalletIndex === -1) {
+            console.error('Fee payer wallet is required');
+            return 'Fee payer wallet is required';
+        }
+
         // Check if the sender has sufficient SOL balance for fees
-        if (activeWallet.solBalance <= 0) {
-            console.error('Insufficient SOL balance for transaction fees');
-            return 'Insufficient SOL balance for transaction fees';
+        if (wallets[feePayerWalletIndex].solBalance <= 0) {
+            console.error(`Insufficient SOL balance for transaction fees: ${formatSOLBalance(wallets[feePayerWalletIndex].solBalance)}`);
+            return `Insufficient SOL balance for transaction fees: ${formatSOLBalance(wallets[feePayerWalletIndex].solBalance)}`;
         }
 
         // Check if the sender has sufficient token balance
-        if (balanceType === 'regular' && activeWallet.splBalance.lt(usdcToBN(amount))) {
-            console.error(`Insufficient ${token.symbol} balance`);
-            return `Insufficient ${token.symbol} balance`;
-        }
-        if (balanceType === 'compressed' && activeWallet.zkBalance.lt(usdcToBN(amount))) {
-            console.error(`Insufficient ZK ${token.symbol} balance`);
-            return `Insufficient ZK ${token.symbol} balance`;
+        if (token.symbol === 'SOL') {
+            if (activeWallet.solBalance.lt(solToBN(amount))) {
+                console.error(`Insufficient SOL balance`);
+                return `Insufficient SOL balance`;
+            }
+        } else {
+            if (balanceType === 'regular' && activeWallet.splBalance.lt(usdcToBN(amount))) {
+                console.error(`Insufficient ${token.symbol} balance`);
+                return `Insufficient ${token.symbol} balance`;
+            }
+            if (balanceType === 'compressed' && activeWallet.zkBalance.lt(usdcToBN(amount))) {
+                console.error(`Insufficient ZK ${token.symbol} balance`);
+                return `Insufficient ZK ${token.symbol} balance`;
+            }
         }
         return null;
     };
 
     const handleSend = async () => {
-        const error = validateTransferRequest(amount, recipient, activeWallet, token, balanceType);
+        const error = validateTransferRequest(amount, recipient, feePayerWalletIndex, activeWallet, token, balanceType);
         if (error) {
             toast.error(error);
             return;
@@ -102,41 +115,55 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
             // If we've made it this far, the request is valid
             // Proceed with sending tokens
             // possible transfers:
-            // 1. uncompressed to compressed
-            if (token.compressed && balanceType === 'regular') {
+            // 1. SOL transfer
+            if (token.symbol === 'SOL') {
+                console.log('Sending SOL');
+                signature = await apiClient.transferSol(
+                    wallets[feePayerWalletIndex],
+                    activeWallet,
+                    new PublicKey(recipient),
+                    solToBN(amount),
+                );
+            }
+            // 2. uncompressed to compressed
+            else if (token.compressed && balanceType === 'regular') {
                 console.log('Sending compressed tokens');
                 signature = await apiClient.compress(
+                    wallets[feePayerWalletIndex],
                     activeWallet,
                     new PublicKey(recipient),
                     amount,
                 );
             }
 
-            // 2. compressed to compressed
-            if (token.compressed && balanceType === 'compressed') {
+            // 3. compressed to compressed
+            else if (token.compressed && balanceType === 'compressed') {
                 // assumes activeWallet is the sender and payer
                 console.log('Sending compressed tokens');
                 signature = await apiClient.transferZK(
+                    wallets[feePayerWalletIndex],
                     activeWallet,
                     new PublicKey(recipient),
                     amount,
                 );
             }
 
-            // 3. uncompressed to uncompressed
-            if (!token.compressed && balanceType === 'regular') {
+            // 4. uncompressed to uncompressed
+            else if (!token.compressed && balanceType === 'regular') {
                 console.log('Sending regular tokens');
                 signature = await apiClient.transferSpl(
+                    wallets[feePayerWalletIndex],
                     activeWallet,
                     new PublicKey(recipient),
                     amount,
                 );
             }
 
-            // 4. compressed to uncompressed
-            if (!token.compressed && balanceType === 'compressed') {
+            // 5. compressed to uncompressed
+            else if (!token.compressed && balanceType === 'compressed') {
                 console.log('Sending uncompressed tokens');
                 signature = await apiClient.decompress(
+                    wallets[feePayerWalletIndex],
                     activeWallet,
                     new PublicKey(recipient),
                     amount,
@@ -145,7 +172,7 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
 
             // TODO: update the UI to show the transaction was sent
             console.log('Transaction sent', signature);
-            toast.success(ToastWithLinkToExplorer(signature || ''));
+            toast.success(ToastWithLinkToExplorer(signature || '', apiClient.network));
             await updateWalletBalance(activeWallet.publicKey);
             await updateWalletHistory(activeWallet.publicKey);
         } catch (error) {
@@ -174,18 +201,37 @@ const SendToken: React.FC<SendTokenProps> = ({ activeWallet, token }) => {
                     placeholder={`Enter amount of ${token.symbol}`}
                 />
             </div>
-            <div className="mb-4">
-                <label htmlFor="balanceType" className="block mb-2">Select Balance To Send:</label>
-                <select
-                    id="balanceType"
-                    onChange={(e) => setBalanceType(e.target.value as BalanceType)}
-                    className="w-full p-2 border rounded"
-                    value={balanceType}
-                >
-                    <option value="regular">Regular Balance</option>
-                    <option value="compressed">Compressed Balance</option>
-                </select>
-            </div>
+            {token.symbol !== 'SOL' && (
+                <div className="mb-4">
+                    <label htmlFor="balanceType" className="block mb-2">Select Balance To Send:</label>
+                    <select
+                        id="balanceType"
+                        onChange={(e) => setBalanceType(e.target.value as BalanceType)}
+                        className="w-full p-2 border rounded"
+                        value={balanceType}
+                    >
+                        <option value="regular">Regular Balance</option>
+                        <option value="compressed">Compressed Balance</option>
+                    </select>
+                </div>
+            )}
+            {wallets.length > 1 && (
+                <div className="mb-4">
+                    <label htmlFor="walletSelector" className="block mb-2">Select Fee Payer Wallet:</label>
+                    <select
+                        id="walletSelector"
+                        onChange={(e) => setFeePayerWalletIndex(parseInt(e.target.value))}
+                        className="w-full p-2 border rounded"
+                    >
+                        {wallets.map((wallet, index) => (
+                            <option key={wallet.publicKey.toString()} value={index}>
+                                Wallet {index + 1} - {wallet.publicKey.toString().slice(0, 8)}... {formatSOLBalance(wallet.solBalance)} SOL
+                                {wallet.publicKey.equals(activeWallet.publicKey) ? ' (Current)' : ''}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
             {wallets.length > 1 && (
                 <div className="mb-4">
                     <label htmlFor="walletSelector" className="block mb-2">Select Recipient Wallet:</label>
